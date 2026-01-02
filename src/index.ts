@@ -14,7 +14,6 @@ import {
   MonthSchema,
 } from "./schemas.js";
 import { tools } from "./tools.js";
-import type { ToolResult } from "./types.js";
 
 async function main(): Promise<void> {
   const token = process.env.YNAB_API_TOKEN;
@@ -36,7 +35,7 @@ async function main(): Promise<void> {
     const { name, arguments: args } = request.params;
 
     try {
-      let result: ToolResult;
+      let result: unknown;
 
       switch (name) {
         case "list_budgets":

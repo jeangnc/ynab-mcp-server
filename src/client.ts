@@ -1,66 +1,34 @@
-import type {
-  BudgetsResponse,
-  BudgetResponse,
-  AccountsResponse,
-  AccountResponse,
-  CategoriesResponse,
-  CategoryResponse,
-  TransactionsResponse,
-  TransactionResponse,
-  PayeesResponse,
-  ScheduledTransactionsResponse,
-  MonthsResponse,
-  MonthResponse,
-} from "./types.js";
+import * as ynab from "ynab";
 
-const YNAB_BASE_URL = "https://api.ynab.com/v1";
-
-function toUnit(milliunits: number): number {
-  return milliunits / 1000;
-}
+const toUnit = (milliunits: number) => ynab.utils.convertMilliUnitsToCurrencyAmount(milliunits);
 
 export interface TransactionFilters {
   sinceDate?: string;
-  type?: string;
+  type?: "uncategorized" | "unapproved";
   categoryId?: string;
   payeeId?: string;
   accountId?: string;
 }
 
 export class YNABClient {
-  private token: string;
+  private api: ynab.API;
 
   constructor(token: string) {
-    this.token = token;
+    this.api = new ynab.API(token);
   }
 
-  private async request<T>(path: string): Promise<T> {
-    const response = await fetch(`${YNAB_BASE_URL}${path}`, {
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`YNAB API error (${response.status}): ${error}`);
-    }
-
-    const json = (await response.json()) as { data: T };
-    return json.data;
+  async listBudgets() {
+    const response = await this.api.budgets.getBudgets();
+    return { budgets: response.data.budgets };
   }
 
-  async listBudgets(): Promise<BudgetsResponse> {
-    return this.request<BudgetsResponse>("/budgets");
-  }
-
-  async getBudget(budgetId: string): Promise<BudgetResponse> {
-    const result = await this.request<BudgetResponse>(`/budgets/${budgetId}`);
+  async getBudget(budgetId: string) {
+    const response = await this.api.budgets.getBudgetById(budgetId);
+    const budget = response.data.budget;
     return {
       budget: {
-        ...result.budget,
-        accounts: result.budget.accounts.map((account) => ({
+        ...budget,
+        accounts: budget.accounts?.map((account) => ({
           ...account,
           balance: toUnit(account.balance),
           cleared_balance: toUnit(account.cleared_balance),
@@ -70,10 +38,10 @@ export class YNABClient {
     };
   }
 
-  async listAccounts(budgetId: string): Promise<AccountsResponse> {
-    const result = await this.request<AccountsResponse>(`/budgets/${budgetId}/accounts`);
+  async listAccounts(budgetId: string) {
+    const response = await this.api.accounts.getAccounts(budgetId);
     return {
-      accounts: result.accounts.map((account) => ({
+      accounts: response.data.accounts.map((account) => ({
         ...account,
         balance: toUnit(account.balance),
         cleared_balance: toUnit(account.cleared_balance),
@@ -82,24 +50,23 @@ export class YNABClient {
     };
   }
 
-  async getAccount(budgetId: string, accountId: string): Promise<AccountResponse> {
-    const result = await this.request<AccountResponse>(
-      `/budgets/${budgetId}/accounts/${accountId}`
-    );
+  async getAccount(budgetId: string, accountId: string) {
+    const response = await this.api.accounts.getAccountById(budgetId, accountId);
+    const account = response.data.account;
     return {
       account: {
-        ...result.account,
-        balance: toUnit(result.account.balance),
-        cleared_balance: toUnit(result.account.cleared_balance),
-        uncleared_balance: toUnit(result.account.uncleared_balance),
+        ...account,
+        balance: toUnit(account.balance),
+        cleared_balance: toUnit(account.cleared_balance),
+        uncleared_balance: toUnit(account.uncleared_balance),
       },
     };
   }
 
-  async listCategories(budgetId: string): Promise<CategoriesResponse> {
-    const result = await this.request<CategoriesResponse>(`/budgets/${budgetId}/categories`);
+  async listCategories(budgetId: string) {
+    const response = await this.api.categories.getCategories(budgetId);
     return {
-      category_groups: result.category_groups.map((group) => ({
+      category_groups: response.data.category_groups.map((group) => ({
         ...group,
         categories: group.categories.map((category) => ({
           ...category,
@@ -111,40 +78,27 @@ export class YNABClient {
     };
   }
 
-  async getCategory(budgetId: string, categoryId: string): Promise<CategoryResponse> {
-    const result = await this.request<CategoryResponse>(
-      `/budgets/${budgetId}/categories/${categoryId}`
-    );
+  async getCategory(budgetId: string, categoryId: string) {
+    const response = await this.api.categories.getCategoryById(budgetId, categoryId);
+    const category = response.data.category;
     return {
       category: {
-        ...result.category,
-        budgeted: toUnit(result.category.budgeted),
-        activity: toUnit(result.category.activity),
-        balance: toUnit(result.category.balance),
+        ...category,
+        budgeted: toUnit(category.budgeted),
+        activity: toUnit(category.activity),
+        balance: toUnit(category.balance),
       },
     };
   }
 
-  async listTransactions(
-    budgetId: string,
-    filters?: TransactionFilters
-  ): Promise<TransactionsResponse> {
-    let path = `/budgets/${budgetId}/transactions`;
-    const queryParams: string[] = [];
+  async listTransactions(budgetId: string, filters?: TransactionFilters) {
+    const response = await this.api.transactions.getTransactions(
+      budgetId,
+      filters?.sinceDate,
+      filters?.type
+    );
 
-    if (filters?.sinceDate) {
-      queryParams.push(`since_date=${encodeURIComponent(filters.sinceDate)}`);
-    }
-    if (filters?.type) {
-      queryParams.push(`type=${encodeURIComponent(filters.type)}`);
-    }
-
-    if (queryParams.length > 0) {
-      path += `?${queryParams.join("&")}`;
-    }
-
-    const result = await this.request<TransactionsResponse>(path);
-    let transactions = result.transactions;
+    let transactions = response.data.transactions;
 
     if (filters?.categoryId) {
       transactions = transactions.filter((t) => t.category_id === filters.categoryId);
@@ -168,15 +122,14 @@ export class YNABClient {
     };
   }
 
-  async getTransaction(budgetId: string, transactionId: string): Promise<TransactionResponse> {
-    const result = await this.request<TransactionResponse>(
-      `/budgets/${budgetId}/transactions/${transactionId}`
-    );
+  async getTransaction(budgetId: string, transactionId: string) {
+    const response = await this.api.transactions.getTransactionById(budgetId, transactionId);
+    const transaction = response.data.transaction;
     return {
       transaction: {
-        ...result.transaction,
-        amount: toUnit(result.transaction.amount),
-        subtransactions: result.transaction.subtransactions.map((st) => ({
+        ...transaction,
+        amount: toUnit(transaction.amount),
+        subtransactions: transaction.subtransactions.map((st) => ({
           ...st,
           amount: toUnit(st.amount),
         })),
@@ -184,16 +137,15 @@ export class YNABClient {
     };
   }
 
-  async listPayees(budgetId: string): Promise<PayeesResponse> {
-    return this.request<PayeesResponse>(`/budgets/${budgetId}/payees`);
+  async listPayees(budgetId: string) {
+    const response = await this.api.payees.getPayees(budgetId);
+    return { payees: response.data.payees };
   }
 
-  async listScheduledTransactions(budgetId: string): Promise<ScheduledTransactionsResponse> {
-    const result = await this.request<ScheduledTransactionsResponse>(
-      `/budgets/${budgetId}/scheduled_transactions`
-    );
+  async listScheduledTransactions(budgetId: string) {
+    const response = await this.api.scheduledTransactions.getScheduledTransactions(budgetId);
     return {
-      scheduled_transactions: result.scheduled_transactions.map((t) => ({
+      scheduled_transactions: response.data.scheduled_transactions.map((t) => ({
         ...t,
         amount: toUnit(t.amount),
         subtransactions: t.subtransactions.map((st) => ({
@@ -204,10 +156,10 @@ export class YNABClient {
     };
   }
 
-  async listMonths(budgetId: string): Promise<MonthsResponse> {
-    const result = await this.request<MonthsResponse>(`/budgets/${budgetId}/months`);
+  async listMonths(budgetId: string) {
+    const response = await this.api.months.getBudgetMonths(budgetId);
     return {
-      months: result.months.map((m) => ({
+      months: response.data.months.map((m) => ({
         ...m,
         income: toUnit(m.income),
         budgeted: toUnit(m.budgeted),
@@ -217,16 +169,17 @@ export class YNABClient {
     };
   }
 
-  async getMonth(budgetId: string, month: string): Promise<MonthResponse> {
-    const result = await this.request<MonthResponse>(`/budgets/${budgetId}/months/${month}`);
+  async getMonth(budgetId: string, month: string) {
+    const response = await this.api.months.getBudgetMonth(budgetId, month);
+    const monthData = response.data.month;
     return {
       month: {
-        ...result.month,
-        income: toUnit(result.month.income),
-        budgeted: toUnit(result.month.budgeted),
-        activity: toUnit(result.month.activity),
-        to_be_budgeted: toUnit(result.month.to_be_budgeted),
-        categories: result.month.categories.map((category) => ({
+        ...monthData,
+        income: toUnit(monthData.income),
+        budgeted: toUnit(monthData.budgeted),
+        activity: toUnit(monthData.activity),
+        to_be_budgeted: toUnit(monthData.to_be_budgeted),
+        categories: monthData.categories.map((category) => ({
           ...category,
           budgeted: toUnit(category.budgeted),
           activity: toUnit(category.activity),

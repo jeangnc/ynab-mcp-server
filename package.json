@@ -1,6 +1,6 @@
 {
   "name": "@jean.gnc/ynab-mcp-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server for YNAB API",
   "type": "module",
   "main": "build/index.js",
@@ -54,6 +54,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
+    "ynab": "^2.10.0",
     "zod": "^4.2.1"
   },
   "devDependencies": {

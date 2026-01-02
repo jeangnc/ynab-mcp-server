@@ -7,7 +7,7 @@ import type {
   Payee,
   MonthSummary,
   ScheduledTransactionDetail,
-} from "../types.js";
+} from "ynab";
 
 export const mockBudget: BudgetSummary = {
   id: "budget-123",
