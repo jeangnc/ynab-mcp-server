@@ -15,6 +15,10 @@ import type {
 
 const YNAB_BASE_URL = "https://api.ynab.com/v1";
 
+function toUnit(milliunits: number): number {
+  return milliunits / 1000;
+}
+
 export interface TransactionFilters {
   sinceDate?: string;
   type?: string;
@@ -52,23 +56,73 @@ export class YNABClient {
   }
 
   async getBudget(budgetId: string): Promise<BudgetResponse> {
-    return this.request<BudgetResponse>(`/budgets/${budgetId}`);
+    const result = await this.request<BudgetResponse>(`/budgets/${budgetId}`);
+    return {
+      budget: {
+        ...result.budget,
+        accounts: result.budget.accounts.map((account) => ({
+          ...account,
+          balance: toUnit(account.balance),
+          cleared_balance: toUnit(account.cleared_balance),
+          uncleared_balance: toUnit(account.uncleared_balance),
+        })),
+      },
+    };
   }
 
   async listAccounts(budgetId: string): Promise<AccountsResponse> {
-    return this.request<AccountsResponse>(`/budgets/${budgetId}/accounts`);
+    const result = await this.request<AccountsResponse>(`/budgets/${budgetId}/accounts`);
+    return {
+      accounts: result.accounts.map((account) => ({
+        ...account,
+        balance: toUnit(account.balance),
+        cleared_balance: toUnit(account.cleared_balance),
+        uncleared_balance: toUnit(account.uncleared_balance),
+      })),
+    };
   }
 
   async getAccount(budgetId: string, accountId: string): Promise<AccountResponse> {
-    return this.request<AccountResponse>(`/budgets/${budgetId}/accounts/${accountId}`);
+    const result = await this.request<AccountResponse>(
+      `/budgets/${budgetId}/accounts/${accountId}`
+    );
+    return {
+      account: {
+        ...result.account,
+        balance: toUnit(result.account.balance),
+        cleared_balance: toUnit(result.account.cleared_balance),
+        uncleared_balance: toUnit(result.account.uncleared_balance),
+      },
+    };
   }
 
   async listCategories(budgetId: string): Promise<CategoriesResponse> {
-    return this.request<CategoriesResponse>(`/budgets/${budgetId}/categories`);
+    const result = await this.request<CategoriesResponse>(`/budgets/${budgetId}/categories`);
+    return {
+      category_groups: result.category_groups.map((group) => ({
+        ...group,
+        categories: group.categories.map((category) => ({
+          ...category,
+          budgeted: toUnit(category.budgeted),
+          activity: toUnit(category.activity),
+          balance: toUnit(category.balance),
+        })),
+      })),
+    };
   }
 
   async getCategory(budgetId: string, categoryId: string): Promise<CategoryResponse> {
-    return this.request<CategoryResponse>(`/budgets/${budgetId}/categories/${categoryId}`);
+    const result = await this.request<CategoryResponse>(
+      `/budgets/${budgetId}/categories/${categoryId}`
+    );
+    return {
+      category: {
+        ...result.category,
+        budgeted: toUnit(result.category.budgeted),
+        activity: toUnit(result.category.activity),
+        balance: toUnit(result.category.balance),
+      },
+    };
   }
 
   async listTransactions(
@@ -102,11 +156,32 @@ export class YNABClient {
       transactions = transactions.filter((t) => t.account_id === filters.accountId);
     }
 
-    return { transactions };
+    return {
+      transactions: transactions.map((t) => ({
+        ...t,
+        amount: toUnit(t.amount),
+        subtransactions: t.subtransactions.map((st) => ({
+          ...st,
+          amount: toUnit(st.amount),
+        })),
+      })),
+    };
   }
 
   async getTransaction(budgetId: string, transactionId: string): Promise<TransactionResponse> {
-    return this.request<TransactionResponse>(`/budgets/${budgetId}/transactions/${transactionId}`);
+    const result = await this.request<TransactionResponse>(
+      `/budgets/${budgetId}/transactions/${transactionId}`
+    );
+    return {
+      transaction: {
+        ...result.transaction,
+        amount: toUnit(result.transaction.amount),
+        subtransactions: result.transaction.subtransactions.map((st) => ({
+          ...st,
+          amount: toUnit(st.amount),
+        })),
+      },
+    };
   }
 
   async listPayees(budgetId: string): Promise<PayeesResponse> {
@@ -114,16 +189,50 @@ export class YNABClient {
   }
 
   async listScheduledTransactions(budgetId: string): Promise<ScheduledTransactionsResponse> {
-    return this.request<ScheduledTransactionsResponse>(
+    const result = await this.request<ScheduledTransactionsResponse>(
       `/budgets/${budgetId}/scheduled_transactions`
     );
+    return {
+      scheduled_transactions: result.scheduled_transactions.map((t) => ({
+        ...t,
+        amount: toUnit(t.amount),
+        subtransactions: t.subtransactions.map((st) => ({
+          ...st,
+          amount: toUnit(st.amount),
+        })),
+      })),
+    };
   }
 
   async listMonths(budgetId: string): Promise<MonthsResponse> {
-    return this.request<MonthsResponse>(`/budgets/${budgetId}/months`);
+    const result = await this.request<MonthsResponse>(`/budgets/${budgetId}/months`);
+    return {
+      months: result.months.map((m) => ({
+        ...m,
+        income: toUnit(m.income),
+        budgeted: toUnit(m.budgeted),
+        activity: toUnit(m.activity),
+        to_be_budgeted: toUnit(m.to_be_budgeted),
+      })),
+    };
   }
 
   async getMonth(budgetId: string, month: string): Promise<MonthResponse> {
-    return this.request<MonthResponse>(`/budgets/${budgetId}/months/${month}`);
+    const result = await this.request<MonthResponse>(`/budgets/${budgetId}/months/${month}`);
+    return {
+      month: {
+        ...result.month,
+        income: toUnit(result.month.income),
+        budgeted: toUnit(result.month.budgeted),
+        activity: toUnit(result.month.activity),
+        to_be_budgeted: toUnit(result.month.to_be_budgeted),
+        categories: result.month.categories.map((category) => ({
+          ...category,
+          budgeted: toUnit(category.budgeted),
+          activity: toUnit(category.activity),
+          balance: toUnit(category.balance),
+        })),
+      },
+    };
   }
 }
