@@ -2,37 +2,63 @@
 
 MCP (Model Context Protocol) server for the YNAB (You Need A Budget) API.
 
-## Setup
+## Installation
+
+### Via npx (recommended)
+
+No installation required. Configure your Claude client to use npx directly (see below).
+
+### Via npm (global)
 
 ```bash
+npm install -g ynab-mcp-server
+```
+
+### From source
+
+```bash
+git clone https://github.com/jeangnc/ynab-mcp-server.git
+cd ynab-mcp-server
 make install
 make build
 ```
 
-## Usage
+## Configuration
 
-Set your YNAB API token and run:
+First, set your YNAB API token in your shell profile (`~/.zshrc` or `~/.bashrc`):
 
 ```bash
-YNAB_API_TOKEN=your-token make run
+export YNAB_API_TOKEN="your-token-here"
 ```
 
-### Claude Desktop Configuration
+### Claude Code
 
-Add to `~/.config/claude/claude_desktop_config.json`:
+```bash
+claude mcp add ynab --scope user --env YNAB_API_TOKEN='${YNAB_API_TOKEN}' -- npx -y ynab-mcp-server
+```
+
+### Claude Desktop
+
+Add to `~/.config/claude/claude_desktop_config.json` (Linux) or `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
 
 ```json
 {
   "mcpServers": {
     "ynab": {
-      "command": "node",
-      "args": ["/path/to/ynab-mcp-server/build/index.js"],
+      "command": "npx",
+      "args": ["-y", "ynab-mcp-server"],
       "env": {
-        "YNAB_API_TOKEN": "your-token-here"
+        "YNAB_API_TOKEN": "${YNAB_API_TOKEN}"
       }
     }
   }
 }
+```
+
+### Manual usage
+
+```bash
+YNAB_API_TOKEN=$YNAB_API_TOKEN npx ynab-mcp-server
 ```
 
 ## Available Tools

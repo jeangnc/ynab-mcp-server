@@ -7,14 +7,31 @@
   "bin": {
     "ynab-mcp-server": "./build/index.js"
   },
+  "files": [
+    "build",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
-    "dev": "tsx src/index.ts"
+    "dev": "tsx src/index.ts",
+    "prepublishOnly": "npm run build"
   },
   "keywords": ["mcp", "ynab", "budget"],
   "author": "",
   "license": "GPL-3.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jeangnc/ynab-mcp-server.git"
+  },
+  "homepage": "https://github.com/jeangnc/ynab-mcp-server#readme",
+  "bugs": {
+    "url": "https://github.com/jeangnc/ynab-mcp-server/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.25.1",
     "zod": "^4.2.1"
