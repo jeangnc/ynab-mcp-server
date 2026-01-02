@@ -17,6 +17,10 @@ clean:
 
 release:
 	npm run build
-	git tag v$$(node -p "require('./package.json').version")
-	git push origin v$$(node -p "require('./package.json').version")
+	@VERSION=v$$(node -p "require('./package.json').version"); \
+	if git rev-parse "$$VERSION" >/dev/null 2>&1; then \
+		echo "Tag $$VERSION already exists, skipping..."; \
+	else \
+		git tag "$$VERSION" && git push origin "$$VERSION"; \
+	fi
 	npm publish
