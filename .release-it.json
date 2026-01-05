@@ -14,7 +14,7 @@
     "release": false
   },
   "hooks": {
-    "before:init": ["npm whoami || npm login", "npm run test:run", "npm run build"],
+    "before:init": ["npm run test:run", "npm run build"],
     "after:release": "gh release create v${version} --title 'v${version}' --notes-from-tag"
   },
   "plugins": {
