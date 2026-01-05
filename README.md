@@ -1,6 +1,15 @@
 # YNAB MCP Server
 
-MCP (Model Context Protocol) server for the YNAB (You Need A Budget) API.
+Talk to your finances.
+
+## What is this?
+
+[YNAB (You Need A Budget)](https://ynab.com) is a popular budgeting app that helps you gain control of your money. This MCP server connects AI assistants to your YNAB data, giving you conversational access to:
+
+- Your budgets and accounts
+- Transaction history and patterns
+- Category balances and spending insights
+- Scheduled and recurring transactions
 
 ## Installation
 
