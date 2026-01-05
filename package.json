@@ -23,7 +23,8 @@
     "format": "prettier --write src/",
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build",
-    "prepare": "husky"
+    "prepare": "husky",
+    "release": "release-it"
   },
   "lint-staged": {
     "*.ts": [
@@ -59,12 +60,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@release-it/conventional-changelog": "^10.0.4",
     "@types/node": "^25.0.3",
     "@vitest/coverage-v8": "^4.0.16",
     "eslint": "^9.39.2",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "prettier": "^3.7.4",
+    "release-it": "^19.2.2",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.51.0",
