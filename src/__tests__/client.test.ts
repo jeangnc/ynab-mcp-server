@@ -46,7 +46,7 @@ describe("YNABClient", () => {
       const result = await client.listBudgets();
 
       expect(result.budgets).toHaveLength(1);
-      expect(result.budgets[0].id).toBe("budget-123");
+      expect(result.budgets[0]?.id).toBe("budget-123");
     });
 
     it("throws on API error", async () => {
@@ -68,7 +68,7 @@ describe("YNABClient", () => {
       const result = await client.listTransactions("budget-123", { categoryId: "cat-1" });
 
       expect(result.transactions).toHaveLength(1);
-      expect(result.transactions[0].category_id).toBe("cat-1");
+      expect(result.transactions[0]?.category_id).toBe("cat-1");
     });
   });
 

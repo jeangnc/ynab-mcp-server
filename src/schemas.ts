@@ -112,3 +112,16 @@ export const CreateAccountSchema = z.object({
   type: AccountTypeSchema.describe("The account type"),
   balance: z.number().describe("The initial account balance"),
 });
+
+// Derived types from schemas
+export type TransactionClearedStatus = z.infer<typeof TransactionClearedStatusSchema>;
+export type TransactionFlagColor = z.infer<typeof TransactionFlagColorSchema>;
+export type AccountType = z.infer<typeof AccountTypeSchema>;
+
+// Input types for client methods (omit budget_id which is passed separately)
+export type CreateTransactionInput = Omit<z.infer<typeof CreateTransactionSchema>, "budget_id">;
+export type UpdateTransactionInput = Omit<
+  z.infer<typeof UpdateTransactionSchema>,
+  "budget_id" | "transaction_id"
+>;
+export type CreateAccountInput = Omit<z.infer<typeof CreateAccountSchema>, "budget_id">;

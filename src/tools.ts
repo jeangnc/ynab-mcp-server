@@ -107,4 +107,7 @@ export const tools = [
     description: "Create a new account in the budget.",
     inputSchema: z.toJSONSchema(CreateAccountSchema),
   },
-];
+] as const;
+
+// Derive tool name union type from the tools array
+export type ToolName = (typeof tools)[number]["name"];

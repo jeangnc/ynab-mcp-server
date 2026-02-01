@@ -1,61 +1,181 @@
+import type {
+  BudgetSummary,
+  BudgetDetail,
+  Account,
+  Category,
+  CategoryGroupWithCategories,
+  TransactionDetail,
+  SubTransaction,
+  Payee,
+  ScheduledTransactionDetail,
+  ScheduledSubTransaction,
+  MonthSummary,
+  MonthDetail,
+} from "ynab";
 import * as ynab from "ynab";
+import { toUnit, toMilliunits } from "./currency.js";
+import type {
+  CreateTransactionInput,
+  UpdateTransactionInput,
+  CreateAccountInput,
+} from "./schemas.js";
 
-const toUnit = (milliunits: number) => ynab.utils.convertMilliUnitsToCurrencyAmount(milliunits);
-const toMilliunits = (amount: number) => Math.round(amount * 1000);
+// Re-export types from schemas for consumers
+export type {
+  CreateTransactionInput,
+  UpdateTransactionInput,
+  CreateAccountInput,
+} from "./schemas.js";
 
 export interface TransactionFilters {
-  sinceDate?: string;
-  type?: "uncategorized" | "unapproved";
-  categoryId?: string;
-  payeeId?: string;
-  accountId?: string;
+  readonly sinceDate?: string | undefined;
+  readonly type?: "uncategorized" | "unapproved" | undefined;
+  readonly categoryId?: string | undefined;
+  readonly payeeId?: string | undefined;
+  readonly accountId?: string | undefined;
 }
 
-export interface CreateTransactionInput {
-  account_id: string;
-  date: string;
-  amount: number;
-  payee_id?: string;
-  payee_name?: string;
-  category_id?: string;
-  memo?: string;
-  cleared?: "cleared" | "uncleared" | "reconciled";
-  approved?: boolean;
-  flag_color?: "red" | "orange" | "yellow" | "green" | "blue" | "purple";
+// Response types with currency amounts converted to units
+type WithConvertedBalances<T> = Omit<T, "balance" | "cleared_balance" | "uncleared_balance"> & {
+  readonly balance: number;
+  readonly cleared_balance: number;
+  readonly uncleared_balance: number;
+};
+
+type WithConvertedCurrency<T> = Omit<T, "budgeted" | "activity" | "balance"> & {
+  readonly budgeted: number;
+  readonly activity: number;
+  readonly balance: number;
+};
+
+type WithConvertedAmount<T> = Omit<T, "amount"> & {
+  readonly amount: number;
+};
+
+type WithConvertedMonthCurrency<T> = Omit<
+  T,
+  "income" | "budgeted" | "activity" | "to_be_budgeted"
+> & {
+  readonly income: number;
+  readonly budgeted: number;
+  readonly activity: number;
+  readonly to_be_budgeted: number;
+};
+
+type ConvertedSubTransaction = WithConvertedAmount<SubTransaction>;
+type ConvertedScheduledSubTransaction = WithConvertedAmount<ScheduledSubTransaction>;
+
+type ConvertedTransaction = WithConvertedAmount<Omit<TransactionDetail, "subtransactions">> & {
+  readonly subtransactions: readonly ConvertedSubTransaction[];
+};
+
+type ConvertedScheduledTransaction = WithConvertedAmount<
+  Omit<ScheduledTransactionDetail, "subtransactions">
+> & {
+  readonly subtransactions: readonly ConvertedScheduledSubTransaction[];
+};
+
+type ConvertedAccount = WithConvertedBalances<Account>;
+
+type ConvertedCategory = WithConvertedCurrency<Category>;
+
+type ConvertedCategoryGroup = Omit<CategoryGroupWithCategories, "categories"> & {
+  readonly categories: readonly ConvertedCategory[];
+};
+
+type ConvertedMonthSummary = WithConvertedMonthCurrency<MonthSummary>;
+
+type ConvertedMonthDetail = WithConvertedMonthCurrency<Omit<MonthDetail, "categories">> & {
+  readonly categories: readonly ConvertedCategory[];
+};
+
+// Budget type with converted accounts
+type ConvertedBudgetDetail = Omit<BudgetDetail, "accounts"> & {
+  readonly accounts?: readonly ConvertedAccount[] | undefined;
+};
+
+// Response interfaces
+export interface ListBudgetsResponse {
+  readonly budgets: readonly BudgetSummary[];
 }
 
-export interface UpdateTransactionInput {
-  account_id?: string;
-  date?: string;
-  amount?: number;
-  payee_id?: string;
-  payee_name?: string;
-  category_id?: string;
-  memo?: string;
-  cleared?: "cleared" | "uncleared" | "reconciled";
-  approved?: boolean;
-  flag_color?: "red" | "orange" | "yellow" | "green" | "blue" | "purple";
+export interface GetBudgetResponse {
+  readonly budget: ConvertedBudgetDetail;
 }
 
-export interface CreateAccountInput {
-  name: string;
-  type: string;
-  balance: number;
+export interface ListAccountsResponse {
+  readonly accounts: readonly ConvertedAccount[];
+}
+
+export interface GetAccountResponse {
+  readonly account: ConvertedAccount;
+}
+
+export interface ListCategoriesResponse {
+  readonly category_groups: readonly ConvertedCategoryGroup[];
+}
+
+export interface GetCategoryResponse {
+  readonly category: ConvertedCategory;
+}
+
+export interface ListTransactionsResponse {
+  readonly transactions: readonly ConvertedTransaction[];
+}
+
+export interface GetTransactionResponse {
+  readonly transaction: ConvertedTransaction;
+}
+
+export interface ListPayeesResponse {
+  readonly payees: readonly Payee[];
+}
+
+export interface ListScheduledTransactionsResponse {
+  readonly scheduled_transactions: readonly ConvertedScheduledTransaction[];
+}
+
+export interface ListMonthsResponse {
+  readonly months: readonly ConvertedMonthSummary[];
+}
+
+export interface GetMonthResponse {
+  readonly month: ConvertedMonthDetail;
+}
+
+export interface CreateTransactionResponse {
+  readonly transaction: ConvertedTransaction;
+}
+
+export interface UpdateTransactionResponse {
+  readonly transaction: ConvertedTransaction;
+}
+
+export interface DeleteTransactionResponse {
+  readonly transaction: ConvertedTransaction;
+}
+
+export interface UpdateCategoryBudgetResponse {
+  readonly category: ConvertedCategory;
+}
+
+export interface CreateAccountResponse {
+  readonly account: ConvertedAccount;
 }
 
 export class YNABClient {
-  private api: ynab.API;
+  private readonly api: ynab.API;
 
   constructor(token: string) {
     this.api = new ynab.API(token);
   }
 
-  async listBudgets() {
+  async listBudgets(): Promise<ListBudgetsResponse> {
     const response = await this.api.budgets.getBudgets();
     return { budgets: response.data.budgets };
   }
 
-  async getBudget(budgetId: string) {
+  async getBudget(budgetId: string): Promise<GetBudgetResponse> {
     const response = await this.api.budgets.getBudgetById(budgetId);
     const budget = response.data.budget;
     return {
@@ -71,7 +191,7 @@ export class YNABClient {
     };
   }
 
-  async listAccounts(budgetId: string) {
+  async listAccounts(budgetId: string): Promise<ListAccountsResponse> {
     const response = await this.api.accounts.getAccounts(budgetId);
     return {
       accounts: response.data.accounts.map((account) => ({
@@ -83,7 +203,7 @@ export class YNABClient {
     };
   }
 
-  async getAccount(budgetId: string, accountId: string) {
+  async getAccount(budgetId: string, accountId: string): Promise<GetAccountResponse> {
     const response = await this.api.accounts.getAccountById(budgetId, accountId);
     const account = response.data.account;
     return {
@@ -96,7 +216,7 @@ export class YNABClient {
     };
   }
 
-  async listCategories(budgetId: string) {
+  async listCategories(budgetId: string): Promise<ListCategoriesResponse> {
     const response = await this.api.categories.getCategories(budgetId);
     return {
       category_groups: response.data.category_groups.map((group) => ({
@@ -111,7 +231,7 @@ export class YNABClient {
     };
   }
 
-  async getCategory(budgetId: string, categoryId: string) {
+  async getCategory(budgetId: string, categoryId: string): Promise<GetCategoryResponse> {
     const response = await this.api.categories.getCategoryById(budgetId, categoryId);
     const category = response.data.category;
     return {
@@ -124,7 +244,10 @@ export class YNABClient {
     };
   }
 
-  async listTransactions(budgetId: string, filters?: TransactionFilters) {
+  async listTransactions(
+    budgetId: string,
+    filters?: TransactionFilters
+  ): Promise<ListTransactionsResponse> {
     const response = await this.api.transactions.getTransactions(
       budgetId,
       filters?.sinceDate,
@@ -155,7 +278,7 @@ export class YNABClient {
     };
   }
 
-  async getTransaction(budgetId: string, transactionId: string) {
+  async getTransaction(budgetId: string, transactionId: string): Promise<GetTransactionResponse> {
     const response = await this.api.transactions.getTransactionById(budgetId, transactionId);
     const transaction = response.data.transaction;
     return {
@@ -170,12 +293,12 @@ export class YNABClient {
     };
   }
 
-  async listPayees(budgetId: string) {
+  async listPayees(budgetId: string): Promise<ListPayeesResponse> {
     const response = await this.api.payees.getPayees(budgetId);
     return { payees: response.data.payees };
   }
 
-  async listScheduledTransactions(budgetId: string) {
+  async listScheduledTransactions(budgetId: string): Promise<ListScheduledTransactionsResponse> {
     const response = await this.api.scheduledTransactions.getScheduledTransactions(budgetId);
     return {
       scheduled_transactions: response.data.scheduled_transactions.map((t) => ({
@@ -189,7 +312,7 @@ export class YNABClient {
     };
   }
 
-  async listMonths(budgetId: string) {
+  async listMonths(budgetId: string): Promise<ListMonthsResponse> {
     const response = await this.api.months.getBudgetMonths(budgetId);
     return {
       months: response.data.months.map((m) => ({
@@ -202,7 +325,7 @@ export class YNABClient {
     };
   }
 
-  async getMonth(budgetId: string, month: string) {
+  async getMonth(budgetId: string, month: string): Promise<GetMonthResponse> {
     const response = await this.api.months.getBudgetMonth(budgetId, month);
     const monthData = response.data.month;
     return {
@@ -222,18 +345,21 @@ export class YNABClient {
     };
   }
 
-  async createTransaction(budgetId: string, input: CreateTransactionInput) {
+  async createTransaction(
+    budgetId: string,
+    input: CreateTransactionInput
+  ): Promise<CreateTransactionResponse> {
     const transaction = {
       account_id: input.account_id,
       date: input.date,
       amount: toMilliunits(input.amount),
-      payee_id: input.payee_id,
-      payee_name: input.payee_name,
-      category_id: input.category_id,
-      memo: input.memo,
-      cleared: input.cleared,
-      approved: input.approved,
-      flag_color: input.flag_color,
+      ...(input.payee_id !== undefined && { payee_id: input.payee_id }),
+      ...(input.payee_name !== undefined && { payee_name: input.payee_name }),
+      ...(input.category_id !== undefined && { category_id: input.category_id }),
+      ...(input.memo !== undefined && { memo: input.memo }),
+      ...(input.cleared !== undefined && { cleared: input.cleared }),
+      ...(input.approved !== undefined && { approved: input.approved }),
+      ...(input.flag_color !== undefined && { flag_color: input.flag_color }),
     };
 
     const response = await this.api.transactions.createTransaction(budgetId, { transaction });
@@ -254,7 +380,11 @@ export class YNABClient {
     };
   }
 
-  async updateTransaction(budgetId: string, transactionId: string, input: UpdateTransactionInput) {
+  async updateTransaction(
+    budgetId: string,
+    transactionId: string,
+    input: UpdateTransactionInput
+  ): Promise<UpdateTransactionResponse> {
     const transaction = {
       ...(input.account_id && { account_id: input.account_id }),
       ...(input.date && { date: input.date }),
@@ -284,7 +414,10 @@ export class YNABClient {
     };
   }
 
-  async deleteTransaction(budgetId: string, transactionId: string) {
+  async deleteTransaction(
+    budgetId: string,
+    transactionId: string
+  ): Promise<DeleteTransactionResponse> {
     const response = await this.api.transactions.deleteTransaction(budgetId, transactionId);
     const deleted = response.data.transaction;
     return {
@@ -304,7 +437,7 @@ export class YNABClient {
     month: string,
     categoryId: string,
     budgeted: number
-  ) {
+  ): Promise<UpdateCategoryBudgetResponse> {
     const response = await this.api.categories.updateMonthCategory(budgetId, month, categoryId, {
       category: { budgeted: toMilliunits(budgeted) },
     });
@@ -319,11 +452,11 @@ export class YNABClient {
     };
   }
 
-  async createAccount(budgetId: string, input: CreateAccountInput) {
+  async createAccount(budgetId: string, input: CreateAccountInput): Promise<CreateAccountResponse> {
     const response = await this.api.accounts.createAccount(budgetId, {
       account: {
         name: input.name,
-        type: input.type as ynab.AccountType,
+        type: input.type,
         balance: toMilliunits(input.balance),
       },
     });
