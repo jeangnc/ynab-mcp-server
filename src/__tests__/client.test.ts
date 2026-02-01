@@ -134,6 +134,20 @@ describe("YNABClient", () => {
         },
       });
     });
+
+    it("throws error when API returns null transaction", async () => {
+      mockCreateTransaction.mockResolvedValueOnce({
+        data: { transaction: null },
+      });
+
+      await expect(
+        client.createTransaction("budget-123", {
+          account_id: "account-456",
+          date: "2025-01-15",
+          amount: -50.25,
+        })
+      ).rejects.toThrow("Transaction creation failed: no transaction returned");
+    });
   });
 
   describe("updateTransaction", () => {

@@ -237,7 +237,10 @@ export class YNABClient {
     };
 
     const response = await this.api.transactions.createTransaction(budgetId, { transaction });
-    const created = response.data.transaction!;
+    const created = response.data.transaction;
+    if (!created) {
+      throw new Error("Transaction creation failed: no transaction returned");
+    }
     return {
       transaction: {
         ...created,

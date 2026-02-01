@@ -4,6 +4,13 @@
   "description": "MCP server for YNAB API",
   "type": "module",
   "main": "build/index.js",
+  "types": "./build/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./build/index.d.ts",
+      "default": "./build/index.js"
+    }
+  },
   "bin": {
     "ynab-mcp-server": "./build/index.js"
   },
@@ -14,10 +21,12 @@
   ],
   "scripts": {
     "build": "tsc",
+    "build:watch": "tsc --watch",
     "start": "node build/index.js",
     "dev": "tsx src/index.ts",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write src/",
