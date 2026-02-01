@@ -6,6 +6,11 @@ import {
   TransactionsSchema,
   TransactionSchema,
   MonthSchema,
+  CreateTransactionSchema,
+  UpdateTransactionSchema,
+  DeleteTransactionSchema,
+  UpdateCategoryBudgetSchema,
+  CreateAccountSchema,
 } from "./schemas.js";
 
 export const tools = [
@@ -75,5 +80,31 @@ export const tools = [
     description:
       "Get detailed budget information for a specific month including all category balances.",
     inputSchema: z.toJSONSchema(MonthSchema),
+  },
+  {
+    name: "create_transaction",
+    description:
+      "Create a new transaction. Amount should be negative for expenses and positive for income.",
+    inputSchema: z.toJSONSchema(CreateTransactionSchema),
+  },
+  {
+    name: "update_transaction",
+    description: "Update an existing transaction. Only provide the fields you want to change.",
+    inputSchema: z.toJSONSchema(UpdateTransactionSchema),
+  },
+  {
+    name: "delete_transaction",
+    description: "Delete an existing transaction.",
+    inputSchema: z.toJSONSchema(DeleteTransactionSchema),
+  },
+  {
+    name: "update_category_budget",
+    description: "Update the budgeted amount for a category in a specific month.",
+    inputSchema: z.toJSONSchema(UpdateCategoryBudgetSchema),
+  },
+  {
+    name: "create_account",
+    description: "Create a new account in the budget.",
+    inputSchema: z.toJSONSchema(CreateAccountSchema),
   },
 ];

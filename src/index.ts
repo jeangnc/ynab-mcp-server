@@ -12,6 +12,11 @@ import {
   TransactionsSchema,
   TransactionSchema,
   MonthSchema,
+  CreateTransactionSchema,
+  UpdateTransactionSchema,
+  DeleteTransactionSchema,
+  UpdateCategoryBudgetSchema,
+  CreateAccountSchema,
 } from "./schemas.js";
 import { tools } from "./tools.js";
 
@@ -111,6 +116,37 @@ async function main(): Promise<void> {
         case "get_month": {
           const { budget_id, month } = MonthSchema.parse(args);
           result = await client.getMonth(budget_id, month);
+          break;
+        }
+
+        case "create_transaction": {
+          const { budget_id, ...transaction } = CreateTransactionSchema.parse(args);
+          result = await client.createTransaction(budget_id, transaction);
+          break;
+        }
+
+        case "update_transaction": {
+          const { budget_id, transaction_id, ...updates } = UpdateTransactionSchema.parse(args);
+          result = await client.updateTransaction(budget_id, transaction_id, updates);
+          break;
+        }
+
+        case "delete_transaction": {
+          const { budget_id, transaction_id } = DeleteTransactionSchema.parse(args);
+          result = await client.deleteTransaction(budget_id, transaction_id);
+          break;
+        }
+
+        case "update_category_budget": {
+          const { budget_id, month, category_id, budgeted } =
+            UpdateCategoryBudgetSchema.parse(args);
+          result = await client.updateCategoryBudget(budget_id, month, category_id, budgeted);
+          break;
+        }
+
+        case "create_account": {
+          const { budget_id, ...account } = CreateAccountSchema.parse(args);
+          result = await client.createAccount(budget_id, account);
           break;
         }
 
