@@ -10,6 +10,9 @@ Talk to your finances.
 - Transaction history and patterns
 - Category balances and spending insights
 - Scheduled and recurring transactions
+- Creating and managing transactions
+- Updating category budgets
+- Creating accounts
 
 ## Installation
 
@@ -72,20 +75,32 @@ YNAB_API_TOKEN=$YNAB_API_TOKEN npx ynab-mcp-server
 
 ## Available Tools
 
+### Read Tools
+
 | Tool | Description |
 |------|-------------|
-| `list_budgets` | Get all budgets for the authenticated user |
-| `get_budget` | Get detailed budget information |
-| `list_accounts` | List all accounts in a budget |
-| `get_account` | Get specific account details |
-| `list_categories` | Get categories grouped by category group |
-| `get_category` | Get single category details |
-| `list_transactions` | Get transactions with optional filters |
-| `get_transaction` | Get single transaction details |
-| `list_payees` | Get all payees |
-| `list_scheduled_transactions` | Get recurring transactions |
-| `list_months` | Get budget month summaries |
-| `get_month` | Get detailed month with category balances |
+| `list_budgets` | Get all budgets for the authenticated user. Returns budget names, IDs, and last modified dates. |
+| `get_budget` | Get detailed information about a specific budget including accounts, categories, and settings. |
+| `list_accounts` | Get all accounts for a budget. Returns account names, types, balances, and status. |
+| `get_account` | Get detailed information about a specific account. |
+| `list_categories` | Get all categories for a budget, grouped by category group. Includes budgeted amounts and activity. |
+| `get_category` | Get detailed information about a specific category including current month data. |
+| `list_transactions` | Get transactions for a budget. Supports filtering by date, type, category, payee, and account. |
+| `get_transaction` | Get detailed information about a specific transaction. |
+| `list_payees` | Get all payees for a budget. |
+| `list_scheduled_transactions` | Get all scheduled/recurring transactions for a budget. |
+| `list_months` | Get all budget months. Returns month summaries with income, budgeted, and activity totals. |
+| `get_month` | Get detailed budget information for a specific month including all category balances. |
+
+### Write Tools
+
+| Tool | Description |
+|------|-------------|
+| `create_transaction` | Create a new transaction. Amount should be negative for expenses and positive for income. |
+| `update_transaction` | Update an existing transaction. Only provide the fields you want to change. |
+| `delete_transaction` | Delete an existing transaction. |
+| `update_category_budget` | Update the budgeted amount for a category in a specific month. |
+| `create_account` | Create a new account in the budget. |
 
 ## Makefile Commands
 
