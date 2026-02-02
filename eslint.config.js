@@ -141,6 +141,15 @@ export default tseslint.config(
       "@typescript-eslint/no-unnecessary-type-arguments": "error",
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/no-redundant-type-constituents": "error",
+
+      // Restrict type assertions - prefer type guards and proper typing
+      "@typescript-eslint/consistent-type-assertions": [
+        "error",
+        {
+          assertionStyle: "as",
+          objectLiteralTypeAssertions: "never",
+        },
+      ],
     },
   }
 );

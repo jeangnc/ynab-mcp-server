@@ -22,12 +22,39 @@ import {
   UpdateScheduledTransactionSchema,
   DeleteScheduledTransactionSchema,
   UpdatePayeeSchema,
+  ListHistorySchema,
+  GetHistoryEntrySchema,
+  UndoOperationSchema,
 } from "./schemas.js";
 import { tools, type ToolName } from "./tools.js";
+import {
+  HistoryStore,
+  getDefaultHistoryPath,
+  TrackedYNABClient,
+  executeUndo,
+  UndoError,
+  isUndoable,
+  type HistoryEntryId,
+} from "./history/index.js";
 
 type ToolHandler = (args: unknown) => Promise<unknown>;
 
-function createHandlers(client: YNABClient): Record<ToolName, ToolHandler> {
+interface HistoryListResponse {
+  entries: Array<{
+    id: string;
+    timestamp: string;
+    budgetId: string;
+    operation: string;
+    status: string;
+    canUndo: boolean;
+  }>;
+}
+
+function createHandlers(
+  client: YNABClient,
+  trackedClient: TrackedYNABClient,
+  historyStore: HistoryStore
+): Record<ToolName, ToolHandler> {
   return {
     list_budgets: () => client.listBudgets(),
 
@@ -92,29 +119,30 @@ function createHandlers(client: YNABClient): Record<ToolName, ToolHandler> {
       return client.getMonth(budget_id, month);
     },
 
+    // Write operations use TrackedYNABClient for history tracking
     create_transaction: (args) => {
       const { budget_id, ...transaction } = CreateTransactionSchema.parse(args);
-      return client.createTransaction(budget_id, transaction);
+      return trackedClient.createTransaction(budget_id, transaction);
     },
 
     update_transaction: (args) => {
       const { budget_id, transaction_id, ...updates } = UpdateTransactionSchema.parse(args);
-      return client.updateTransaction(budget_id, transaction_id, updates);
+      return trackedClient.updateTransaction(budget_id, transaction_id, updates);
     },
 
     delete_transaction: (args) => {
       const { budget_id, transaction_id } = DeleteTransactionSchema.parse(args);
-      return client.deleteTransaction(budget_id, transaction_id);
+      return trackedClient.deleteTransaction(budget_id, transaction_id);
     },
 
     update_category_budget: (args) => {
       const { budget_id, month, category_id, budgeted } = UpdateCategoryBudgetSchema.parse(args);
-      return client.updateCategoryBudget(budget_id, month, category_id, budgeted);
+      return trackedClient.updateCategoryBudget(budget_id, month, category_id, budgeted);
     },
 
     create_account: (args) => {
       const { budget_id, ...account } = CreateAccountSchema.parse(args);
-      return client.createAccount(budget_id, account);
+      return trackedClient.createAccount(budget_id, account);
     },
 
     get_scheduled_transaction: (args) => {
@@ -124,23 +152,82 @@ function createHandlers(client: YNABClient): Record<ToolName, ToolHandler> {
 
     create_scheduled_transaction: (args) => {
       const { budget_id, ...scheduledTransaction } = CreateScheduledTransactionSchema.parse(args);
-      return client.createScheduledTransaction(budget_id, scheduledTransaction);
+      return trackedClient.createScheduledTransaction(budget_id, scheduledTransaction);
     },
 
     update_scheduled_transaction: (args) => {
       const { budget_id, scheduled_transaction_id, ...updates } =
         UpdateScheduledTransactionSchema.parse(args);
-      return client.updateScheduledTransaction(budget_id, scheduled_transaction_id, updates);
+      return trackedClient.updateScheduledTransaction(budget_id, scheduled_transaction_id, updates);
     },
 
     delete_scheduled_transaction: (args) => {
       const { budget_id, scheduled_transaction_id } = DeleteScheduledTransactionSchema.parse(args);
-      return client.deleteScheduledTransaction(budget_id, scheduled_transaction_id);
+      return trackedClient.deleteScheduledTransaction(budget_id, scheduled_transaction_id);
     },
 
     update_payee: (args) => {
       const { budget_id, payee_id, name } = UpdatePayeeSchema.parse(args);
-      return client.updatePayee(budget_id, payee_id, name);
+      return trackedClient.updatePayee(budget_id, payee_id, name);
+    },
+
+    // History operations (sync but wrapped in Promise for ToolHandler compatibility)
+    list_history: (args): Promise<HistoryListResponse> => {
+      const { budget_id, limit = 20 } = ListHistorySchema.parse(args);
+
+      const entries = budget_id ? historyStore.getByBudget(budget_id) : historyStore.getAll();
+
+      return Promise.resolve({
+        entries: entries.slice(0, limit).map((entry) => ({
+          id: entry.id,
+          timestamp: entry.timestamp,
+          budgetId: entry.budgetId,
+          operation: entry.operation,
+          status: entry.status,
+          canUndo: isUndoable(entry),
+        })),
+      });
+    },
+
+    get_history_entry: (args) => {
+      const { entry_id } = GetHistoryEntrySchema.parse(args);
+      const entry = historyStore.get(entry_id as HistoryEntryId);
+
+      if (!entry) {
+        throw new Error(`History entry not found: ${entry_id}`);
+      }
+
+      return Promise.resolve({
+        entry,
+        canUndo: isUndoable(entry),
+      });
+    },
+
+    undo_operation: async (args) => {
+      const { entry_id } = UndoOperationSchema.parse(args);
+      const entry = historyStore.get(entry_id as HistoryEntryId);
+
+      if (!entry) {
+        throw new Error(`History entry not found: ${entry_id}`);
+      }
+
+      try {
+        await executeUndo(client, entry);
+        await historyStore.updateStatus(entry.id, "undone");
+        return {
+          success: true,
+          message: `Successfully undid ${entry.operation}`,
+          entryId: entry.id,
+        };
+      } catch (error) {
+        if (error instanceof UndoError) {
+          // Don't update status for UndoError (e.g., already undone, can't undo account)
+          throw error;
+        }
+        // Mark as failed for API errors
+        await historyStore.updateStatus(entry.id, "undo_failed");
+        throw error;
+      }
     },
   };
 }
@@ -152,8 +239,15 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Initialize history store
+  const historyStore = new HistoryStore(getDefaultHistoryPath());
+  await historyStore.load();
+
+  // Initialize clients
   const client = new YNABClient(token);
-  const handlers = createHandlers(client);
+  const trackedClient = new TrackedYNABClient(client, historyStore);
+
+  const handlers = createHandlers(client, trackedClient, historyStore);
 
   const server = new Server(
     { name: "ynab-mcp-server", version: "1.0.0" },

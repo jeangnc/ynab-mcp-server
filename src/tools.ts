@@ -16,6 +16,9 @@ import {
   UpdateScheduledTransactionSchema,
   DeleteScheduledTransactionSchema,
   UpdatePayeeSchema,
+  ListHistorySchema,
+  GetHistoryEntrySchema,
+  UndoOperationSchema,
 } from "./schemas.js";
 
 export const tools = [
@@ -138,6 +141,24 @@ export const tools = [
     name: "update_payee",
     description: "Update a payee's name. The name must be a maximum of 500 characters.",
     inputSchema: z.toJSONSchema(UpdatePayeeSchema),
+  },
+  {
+    name: "list_history",
+    description:
+      "List recent write operations with their IDs for undo. Operations are listed in reverse chronological order (newest first).",
+    inputSchema: z.toJSONSchema(ListHistorySchema),
+  },
+  {
+    name: "get_history_entry",
+    description:
+      "Get detailed information about a specific history entry including before/after state.",
+    inputSchema: z.toJSONSchema(GetHistoryEntrySchema),
+  },
+  {
+    name: "undo_operation",
+    description:
+      "Revert a previous write operation by its history entry ID. Note: Account creation cannot be undone (YNAB API limitation).",
+    inputSchema: z.toJSONSchema(UndoOperationSchema),
   },
 ] as const;
 

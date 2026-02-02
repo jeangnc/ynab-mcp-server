@@ -107,6 +107,47 @@ YNAB_API_TOKEN=$YNAB_API_TOKEN npx ynab-mcp-server
 | `delete_scheduled_transaction` | Delete an existing scheduled transaction. |
 | `update_payee` | Update a payee's name. The name must be a maximum of 500 characters. |
 
+### History Tools
+
+| Tool | Description |
+|------|-------------|
+| `list_history` | List recent write operations with their IDs for undo. Operations are listed in reverse chronological order (newest first). |
+| `get_history_entry` | Get detailed information about a specific history entry including before/after state. |
+| `undo_operation` | Revert a previous write operation by its history entry ID. |
+
+## History & Undo
+
+The server tracks all write operations (transactions, scheduled transactions, category budgets, payees, and accounts) and allows you to undo them.
+
+### How it works
+
+- All write operations are automatically recorded to `~/.ynab-mcp-history.json`
+- History persists across server restarts
+- Up to 100 operations are retained (oldest are automatically removed)
+- Use `list_history` to see recent operations and their IDs
+- Use `undo_operation` with an entry ID to revert a change
+
+### Supported undo operations
+
+| Operation | Undo Action |
+|-----------|-------------|
+| Create transaction | Deletes the created transaction |
+| Update transaction | Restores to previous state |
+| Delete transaction | Recreates the transaction (new ID) |
+| Create scheduled transaction | Deletes the created scheduled transaction |
+| Update scheduled transaction | Restores to previous state |
+| Delete scheduled transaction | Recreates the scheduled transaction (new ID) |
+| Update category budget | Restores previous budgeted amount |
+| Update payee | Restores previous name |
+| Create account | **Cannot be undone** (YNAB API limitation) |
+
+### Limitations
+
+- **Account creation cannot be undone**: The YNAB API does not support deleting accounts
+- **Recreated transactions get new IDs**: When undoing a delete, the transaction is recreated with a new ID
+- **External changes**: If data is modified outside the MCP server, undo may fail or produce unexpected results
+- **Old history entries**: Very old entries may reference entities that no longer exist
+
 ## Makefile Commands
 
 ```

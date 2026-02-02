@@ -554,6 +554,8 @@ export class YNABClient {
     scheduledTransactionId: string,
     input: UpdateScheduledTransactionInput
   ): Promise<UpdateScheduledTransactionResponse> {
+    // Conditional spreads build partial update - type assertion needed for YNAB SDK
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     const scheduledTransaction = {
       ...(input.account_id && { account_id: input.account_id }),
       ...(input.date && { date: input.date }),

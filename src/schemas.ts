@@ -184,6 +184,20 @@ export const UpdatePayeeSchema = z.object({
   name: z.string().describe("The new payee name (max 500 characters)"),
 });
 
+// History operation schemas
+export const ListHistorySchema = z.object({
+  budget_id: z.string().optional().describe("Filter by budget ID (optional)"),
+  limit: z.number().optional().describe("Maximum number of entries to return (default: 20)"),
+});
+
+export const GetHistoryEntrySchema = z.object({
+  entry_id: z.string().describe("The history entry ID"),
+});
+
+export const UndoOperationSchema = z.object({
+  entry_id: z.string().describe("The history entry ID to undo"),
+});
+
 // Derived types from schemas
 export type TransactionClearedStatus = z.infer<typeof TransactionClearedStatusSchema>;
 export type TransactionFlagColor = z.infer<typeof TransactionFlagColorSchema>;
