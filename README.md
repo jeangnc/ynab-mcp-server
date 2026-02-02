@@ -101,6 +101,11 @@ YNAB_API_TOKEN=$YNAB_API_TOKEN npx ynab-mcp-server
 | `delete_transaction` | Delete an existing transaction. |
 | `update_category_budget` | Update the budgeted amount for a category in a specific month. |
 | `create_account` | Create a new account in the budget. |
+| `get_scheduled_transaction` | Get detailed information about a specific scheduled transaction. |
+| `create_scheduled_transaction` | Create a new scheduled/recurring transaction. Date must be in the future (max 5 years). |
+| `update_scheduled_transaction` | Update an existing scheduled transaction. Only provide fields you want to change. |
+| `delete_scheduled_transaction` | Delete an existing scheduled transaction. |
+| `update_payee` | Update a payee's name. The name must be a maximum of 500 characters. |
 
 ## Makefile Commands
 

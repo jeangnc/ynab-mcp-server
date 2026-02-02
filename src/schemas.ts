@@ -12,6 +12,22 @@ export const TransactionFlagColorSchema = z.enum([
   "purple",
 ]);
 
+export const ScheduledTransactionFrequencySchema = z.enum([
+  "never",
+  "daily",
+  "weekly",
+  "everyOtherWeek",
+  "twiceAMonth",
+  "every4Weeks",
+  "monthly",
+  "everyOtherMonth",
+  "every3Months",
+  "every4Months",
+  "twiceAYear",
+  "yearly",
+  "everyOtherYear",
+]);
+
 export const AccountTypeSchema = z.enum([
   "checking",
   "savings",
@@ -113,10 +129,66 @@ export const CreateAccountSchema = z.object({
   balance: z.number().describe("The initial account balance"),
 });
 
+export const ScheduledTransactionSchema = z.object({
+  budget_id: z.string().describe("The budget ID"),
+  scheduled_transaction_id: z.string().describe("The scheduled transaction ID"),
+});
+
+export const CreateScheduledTransactionSchema = z.object({
+  budget_id: z.string().describe("The budget ID"),
+  account_id: z.string().describe("The account ID for this scheduled transaction"),
+  date: z.string().describe("The first date for this scheduled transaction (YYYY-MM-DD)"),
+  amount: z
+    .number()
+    .optional()
+    .describe("The transaction amount (negative for expense, positive for income)"),
+  payee_id: z.string().optional().describe("The payee ID"),
+  payee_name: z.string().optional().describe("The payee name (used if payee_id is not provided)"),
+  category_id: z.string().optional().describe("The category ID"),
+  memo: z.string().optional().describe("A memo for the scheduled transaction"),
+  flag_color: TransactionFlagColorSchema.optional().describe("The flag color"),
+  frequency: ScheduledTransactionFrequencySchema.optional().describe(
+    "The frequency of the scheduled transaction"
+  ),
+});
+
+export const UpdateScheduledTransactionSchema = z.object({
+  budget_id: z.string().describe("The budget ID"),
+  scheduled_transaction_id: z.string().describe("The scheduled transaction ID to update"),
+  account_id: z.string().optional().describe("The account ID"),
+  date: z.string().optional().describe("The next date for this scheduled transaction (YYYY-MM-DD)"),
+  amount: z.number().optional().describe("The transaction amount"),
+  payee_id: z.string().optional().describe("The payee ID"),
+  payee_name: z.string().optional().describe("The payee name"),
+  category_id: z.string().optional().describe("The category ID"),
+  memo: z.string().optional().describe("A memo for the scheduled transaction"),
+  flag_color: TransactionFlagColorSchema.optional().describe("The flag color"),
+  frequency: ScheduledTransactionFrequencySchema.optional().describe(
+    "The frequency of the scheduled transaction"
+  ),
+});
+
+export const DeleteScheduledTransactionSchema = z.object({
+  budget_id: z.string().describe("The budget ID"),
+  scheduled_transaction_id: z.string().describe("The scheduled transaction ID to delete"),
+});
+
+export const PayeeSchema = z.object({
+  budget_id: z.string().describe("The budget ID"),
+  payee_id: z.string().describe("The payee ID"),
+});
+
+export const UpdatePayeeSchema = z.object({
+  budget_id: z.string().describe("The budget ID"),
+  payee_id: z.string().describe("The payee ID"),
+  name: z.string().describe("The new payee name (max 500 characters)"),
+});
+
 // Derived types from schemas
 export type TransactionClearedStatus = z.infer<typeof TransactionClearedStatusSchema>;
 export type TransactionFlagColor = z.infer<typeof TransactionFlagColorSchema>;
 export type AccountType = z.infer<typeof AccountTypeSchema>;
+export type ScheduledTransactionFrequency = z.infer<typeof ScheduledTransactionFrequencySchema>;
 
 // Input types for client methods (omit budget_id which is passed separately)
 export type CreateTransactionInput = Omit<z.infer<typeof CreateTransactionSchema>, "budget_id">;
@@ -125,3 +197,11 @@ export type UpdateTransactionInput = Omit<
   "budget_id" | "transaction_id"
 >;
 export type CreateAccountInput = Omit<z.infer<typeof CreateAccountSchema>, "budget_id">;
+export type CreateScheduledTransactionInput = Omit<
+  z.infer<typeof CreateScheduledTransactionSchema>,
+  "budget_id"
+>;
+export type UpdateScheduledTransactionInput = Omit<
+  z.infer<typeof UpdateScheduledTransactionSchema>,
+  "budget_id" | "scheduled_transaction_id"
+>;

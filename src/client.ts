@@ -18,6 +18,8 @@ import type {
   CreateTransactionInput,
   UpdateTransactionInput,
   CreateAccountInput,
+  CreateScheduledTransactionInput,
+  UpdateScheduledTransactionInput,
 } from "./schemas.js";
 
 // Re-export types from schemas for consumers
@@ -25,6 +27,8 @@ export type {
   CreateTransactionInput,
   UpdateTransactionInput,
   CreateAccountInput,
+  CreateScheduledTransactionInput,
+  UpdateScheduledTransactionInput,
 } from "./schemas.js";
 
 export interface TransactionFilters {
@@ -161,6 +165,26 @@ export interface UpdateCategoryBudgetResponse {
 
 export interface CreateAccountResponse {
   readonly account: ConvertedAccount;
+}
+
+export interface GetScheduledTransactionResponse {
+  readonly scheduled_transaction: ConvertedScheduledTransaction;
+}
+
+export interface CreateScheduledTransactionResponse {
+  readonly scheduled_transaction: ConvertedScheduledTransaction;
+}
+
+export interface UpdateScheduledTransactionResponse {
+  readonly scheduled_transaction: ConvertedScheduledTransaction;
+}
+
+export interface DeleteScheduledTransactionResponse {
+  readonly scheduled_transaction: ConvertedScheduledTransaction;
+}
+
+export interface UpdatePayeeResponse {
+  readonly payee: Payee;
 }
 
 export class YNABClient {
@@ -469,5 +493,122 @@ export class YNABClient {
         uncleared_balance: toUnit(account.uncleared_balance),
       },
     };
+  }
+
+  async getScheduledTransaction(
+    budgetId: string,
+    scheduledTransactionId: string
+  ): Promise<GetScheduledTransactionResponse> {
+    const response = await this.api.scheduledTransactions.getScheduledTransactionById(
+      budgetId,
+      scheduledTransactionId
+    );
+    const scheduledTransaction = response.data.scheduled_transaction;
+    return {
+      scheduled_transaction: {
+        ...scheduledTransaction,
+        amount: toUnit(scheduledTransaction.amount),
+        subtransactions: scheduledTransaction.subtransactions.map((st) => ({
+          ...st,
+          amount: toUnit(st.amount),
+        })),
+      },
+    };
+  }
+
+  async createScheduledTransaction(
+    budgetId: string,
+    input: CreateScheduledTransactionInput
+  ): Promise<CreateScheduledTransactionResponse> {
+    const scheduledTransaction = {
+      account_id: input.account_id,
+      date: input.date,
+      ...(input.amount !== undefined && { amount: toMilliunits(input.amount) }),
+      ...(input.payee_id !== undefined && { payee_id: input.payee_id }),
+      ...(input.payee_name !== undefined && { payee_name: input.payee_name }),
+      ...(input.category_id !== undefined && { category_id: input.category_id }),
+      ...(input.memo !== undefined && { memo: input.memo }),
+      ...(input.flag_color !== undefined && { flag_color: input.flag_color }),
+      ...(input.frequency !== undefined && { frequency: input.frequency }),
+    };
+
+    const response = await this.api.scheduledTransactions.createScheduledTransaction(budgetId, {
+      scheduled_transaction: scheduledTransaction,
+    });
+    const created = response.data.scheduled_transaction;
+    return {
+      scheduled_transaction: {
+        ...created,
+        amount: toUnit(created.amount),
+        subtransactions:
+          created.subtransactions?.map((st) => ({
+            ...st,
+            amount: toUnit(st.amount),
+          })) ?? [],
+      },
+    };
+  }
+
+  async updateScheduledTransaction(
+    budgetId: string,
+    scheduledTransactionId: string,
+    input: UpdateScheduledTransactionInput
+  ): Promise<UpdateScheduledTransactionResponse> {
+    const scheduledTransaction = {
+      ...(input.account_id && { account_id: input.account_id }),
+      ...(input.date && { date: input.date }),
+      ...(input.amount !== undefined && { amount: toMilliunits(input.amount) }),
+      ...(input.payee_id !== undefined && { payee_id: input.payee_id }),
+      ...(input.payee_name !== undefined && { payee_name: input.payee_name }),
+      ...(input.category_id !== undefined && { category_id: input.category_id }),
+      ...(input.memo !== undefined && { memo: input.memo }),
+      ...(input.flag_color !== undefined && { flag_color: input.flag_color }),
+      ...(input.frequency !== undefined && { frequency: input.frequency }),
+    } as ynab.SaveScheduledTransaction;
+
+    const response = await this.api.scheduledTransactions.updateScheduledTransaction(
+      budgetId,
+      scheduledTransactionId,
+      { scheduled_transaction: scheduledTransaction }
+    );
+    const updated = response.data.scheduled_transaction;
+    return {
+      scheduled_transaction: {
+        ...updated,
+        amount: toUnit(updated.amount),
+        subtransactions: updated.subtransactions.map((st) => ({
+          ...st,
+          amount: toUnit(st.amount),
+        })),
+      },
+    };
+  }
+
+  async deleteScheduledTransaction(
+    budgetId: string,
+    scheduledTransactionId: string
+  ): Promise<DeleteScheduledTransactionResponse> {
+    const response = await this.api.scheduledTransactions.deleteScheduledTransaction(
+      budgetId,
+      scheduledTransactionId
+    );
+    const deleted = response.data.scheduled_transaction;
+    return {
+      scheduled_transaction: {
+        ...deleted,
+        amount: toUnit(deleted.amount),
+        subtransactions: deleted.subtransactions.map((st) => ({
+          ...st,
+          amount: toUnit(st.amount),
+        })),
+      },
+    };
+  }
+
+  async updatePayee(budgetId: string, payeeId: string, name: string): Promise<UpdatePayeeResponse> {
+    const response = await this.api.payees.updatePayee(budgetId, payeeId, {
+      payee: { name },
+    });
+    return { payee: response.data.payee };
   }
 }

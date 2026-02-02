@@ -17,6 +17,11 @@ import {
   DeleteTransactionSchema,
   UpdateCategoryBudgetSchema,
   CreateAccountSchema,
+  ScheduledTransactionSchema,
+  CreateScheduledTransactionSchema,
+  UpdateScheduledTransactionSchema,
+  DeleteScheduledTransactionSchema,
+  UpdatePayeeSchema,
 } from "./schemas.js";
 import { tools, type ToolName } from "./tools.js";
 
@@ -110,6 +115,32 @@ function createHandlers(client: YNABClient): Record<ToolName, ToolHandler> {
     create_account: (args) => {
       const { budget_id, ...account } = CreateAccountSchema.parse(args);
       return client.createAccount(budget_id, account);
+    },
+
+    get_scheduled_transaction: (args) => {
+      const { budget_id, scheduled_transaction_id } = ScheduledTransactionSchema.parse(args);
+      return client.getScheduledTransaction(budget_id, scheduled_transaction_id);
+    },
+
+    create_scheduled_transaction: (args) => {
+      const { budget_id, ...scheduledTransaction } = CreateScheduledTransactionSchema.parse(args);
+      return client.createScheduledTransaction(budget_id, scheduledTransaction);
+    },
+
+    update_scheduled_transaction: (args) => {
+      const { budget_id, scheduled_transaction_id, ...updates } =
+        UpdateScheduledTransactionSchema.parse(args);
+      return client.updateScheduledTransaction(budget_id, scheduled_transaction_id, updates);
+    },
+
+    delete_scheduled_transaction: (args) => {
+      const { budget_id, scheduled_transaction_id } = DeleteScheduledTransactionSchema.parse(args);
+      return client.deleteScheduledTransaction(budget_id, scheduled_transaction_id);
+    },
+
+    update_payee: (args) => {
+      const { budget_id, payee_id, name } = UpdatePayeeSchema.parse(args);
+      return client.updatePayee(budget_id, payee_id, name);
     },
   };
 }

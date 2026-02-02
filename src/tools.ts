@@ -11,6 +11,11 @@ import {
   DeleteTransactionSchema,
   UpdateCategoryBudgetSchema,
   CreateAccountSchema,
+  ScheduledTransactionSchema,
+  CreateScheduledTransactionSchema,
+  UpdateScheduledTransactionSchema,
+  DeleteScheduledTransactionSchema,
+  UpdatePayeeSchema,
 } from "./schemas.js";
 
 export const tools = [
@@ -106,6 +111,33 @@ export const tools = [
     name: "create_account",
     description: "Create a new account in the budget.",
     inputSchema: z.toJSONSchema(CreateAccountSchema),
+  },
+  {
+    name: "get_scheduled_transaction",
+    description: "Get detailed information about a specific scheduled transaction.",
+    inputSchema: z.toJSONSchema(ScheduledTransactionSchema),
+  },
+  {
+    name: "create_scheduled_transaction",
+    description:
+      "Create a new scheduled/recurring transaction. Date must be in the future (max 5 years).",
+    inputSchema: z.toJSONSchema(CreateScheduledTransactionSchema),
+  },
+  {
+    name: "update_scheduled_transaction",
+    description:
+      "Update an existing scheduled transaction. Only provide fields you want to change.",
+    inputSchema: z.toJSONSchema(UpdateScheduledTransactionSchema),
+  },
+  {
+    name: "delete_scheduled_transaction",
+    description: "Delete an existing scheduled transaction.",
+    inputSchema: z.toJSONSchema(DeleteScheduledTransactionSchema),
+  },
+  {
+    name: "update_payee",
+    description: "Update a payee's name. The name must be a maximum of 500 characters.",
+    inputSchema: z.toJSONSchema(UpdatePayeeSchema),
   },
 ] as const;
 

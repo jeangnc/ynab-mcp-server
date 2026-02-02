@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { YNABClient } from "../client.js";
-import { mockBudget, mockTransaction } from "./fixtures.js";
+import { mockBudget, mockTransaction, mockScheduledTransaction, mockPayee } from "./fixtures.js";
 
 // Create mock functions that we can control
 const mockGetBudgets = vi.fn();
@@ -10,6 +10,11 @@ const mockUpdateTransaction = vi.fn();
 const mockDeleteTransaction = vi.fn();
 const mockUpdateMonthCategory = vi.fn();
 const mockCreateAccount = vi.fn();
+const mockGetScheduledTransactionById = vi.fn();
+const mockCreateScheduledTransaction = vi.fn();
+const mockUpdateScheduledTransaction = vi.fn();
+const mockDeleteScheduledTransaction = vi.fn();
+const mockUpdatePayee = vi.fn();
 
 // Mock the ynab module
 vi.mock("ynab", () => {
@@ -24,6 +29,13 @@ vi.mock("ynab", () => {
       };
       categories = { updateMonthCategory: mockUpdateMonthCategory };
       accounts = { createAccount: mockCreateAccount };
+      scheduledTransactions = {
+        getScheduledTransactionById: mockGetScheduledTransactionById,
+        createScheduledTransaction: mockCreateScheduledTransaction,
+        updateScheduledTransaction: mockUpdateScheduledTransaction,
+        deleteScheduledTransaction: mockDeleteScheduledTransaction,
+      };
+      payees = { updatePayee: mockUpdatePayee };
     },
     utils: { convertMilliUnitsToCurrencyAmount: (m: number) => m / 1000 },
   };
@@ -271,6 +283,164 @@ describe("YNABClient", () => {
       });
       expect(result.account.id).toBe("new-account-123");
       expect(result.account.balance).toBe(1000);
+    });
+  });
+
+  describe("getScheduledTransaction", () => {
+    it("returns scheduled transaction with amount converted to units", async () => {
+      mockGetScheduledTransactionById.mockResolvedValueOnce({
+        data: { scheduled_transaction: mockScheduledTransaction },
+      });
+
+      const result = await client.getScheduledTransaction("budget-123", "scheduled-123");
+
+      expect(mockGetScheduledTransactionById).toHaveBeenCalledWith("budget-123", "scheduled-123");
+      expect(result.scheduled_transaction.id).toBe("scheduled-123");
+      expect(result.scheduled_transaction.amount).toBe(-10);
+    });
+  });
+
+  describe("createScheduledTransaction", () => {
+    it("creates scheduled transaction with amount converted to milliunits", async () => {
+      const createdScheduledTransaction = {
+        ...mockScheduledTransaction,
+        id: "new-scheduled-123",
+        amount: -50250,
+      };
+
+      mockCreateScheduledTransaction.mockResolvedValueOnce({
+        data: { scheduled_transaction: createdScheduledTransaction },
+      });
+
+      const result = await client.createScheduledTransaction("budget-123", {
+        account_id: "account-456",
+        date: "2025-02-01",
+        amount: -50.25,
+        frequency: "monthly",
+        memo: "Test scheduled transaction",
+      });
+
+      expect(mockCreateScheduledTransaction).toHaveBeenCalledWith("budget-123", {
+        scheduled_transaction: {
+          account_id: "account-456",
+          date: "2025-02-01",
+          amount: -50250,
+          frequency: "monthly",
+          memo: "Test scheduled transaction",
+        },
+      });
+      expect(result.scheduled_transaction.id).toBe("new-scheduled-123");
+      expect(result.scheduled_transaction.amount).toBe(-50.25);
+    });
+
+    it("passes through optional fields", async () => {
+      const createdScheduledTransaction = { ...mockScheduledTransaction, amount: -25000 };
+
+      mockCreateScheduledTransaction.mockResolvedValueOnce({
+        data: { scheduled_transaction: createdScheduledTransaction },
+      });
+
+      await client.createScheduledTransaction("budget-123", {
+        account_id: "account-456",
+        date: "2025-02-15",
+        amount: -25,
+        payee_id: "payee-789",
+        category_id: "category-abc",
+        frequency: "weekly",
+        flag_color: "green",
+      });
+
+      expect(mockCreateScheduledTransaction).toHaveBeenCalledWith("budget-123", {
+        scheduled_transaction: {
+          account_id: "account-456",
+          date: "2025-02-15",
+          amount: -25000,
+          payee_id: "payee-789",
+          category_id: "category-abc",
+          frequency: "weekly",
+          flag_color: "green",
+        },
+      });
+    });
+  });
+
+  describe("updateScheduledTransaction", () => {
+    it("updates scheduled transaction with converted amount", async () => {
+      const updatedScheduledTransaction = {
+        ...mockScheduledTransaction,
+        amount: -75000,
+        memo: "Updated",
+      };
+
+      mockUpdateScheduledTransaction.mockResolvedValueOnce({
+        data: { scheduled_transaction: updatedScheduledTransaction },
+      });
+
+      const result = await client.updateScheduledTransaction("budget-123", "scheduled-123", {
+        amount: -75,
+        memo: "Updated",
+      });
+
+      expect(mockUpdateScheduledTransaction).toHaveBeenCalledWith("budget-123", "scheduled-123", {
+        scheduled_transaction: {
+          amount: -75000,
+          memo: "Updated",
+        },
+      });
+      expect(result.scheduled_transaction.amount).toBe(-75);
+    });
+
+    it("updates without amount conversion when amount not provided", async () => {
+      const updatedScheduledTransaction = { ...mockScheduledTransaction, memo: "New memo" };
+
+      mockUpdateScheduledTransaction.mockResolvedValueOnce({
+        data: { scheduled_transaction: updatedScheduledTransaction },
+      });
+
+      await client.updateScheduledTransaction("budget-123", "scheduled-123", {
+        memo: "New memo",
+        frequency: "weekly",
+      });
+
+      expect(mockUpdateScheduledTransaction).toHaveBeenCalledWith("budget-123", "scheduled-123", {
+        scheduled_transaction: {
+          memo: "New memo",
+          frequency: "weekly",
+        },
+      });
+    });
+  });
+
+  describe("deleteScheduledTransaction", () => {
+    it("deletes scheduled transaction and returns result", async () => {
+      const deletedScheduledTransaction = { ...mockScheduledTransaction, deleted: true };
+
+      mockDeleteScheduledTransaction.mockResolvedValueOnce({
+        data: { scheduled_transaction: deletedScheduledTransaction },
+      });
+
+      const result = await client.deleteScheduledTransaction("budget-123", "scheduled-123");
+
+      expect(mockDeleteScheduledTransaction).toHaveBeenCalledWith("budget-123", "scheduled-123");
+      expect(result.scheduled_transaction.deleted).toBe(true);
+      expect(result.scheduled_transaction.amount).toBe(-10);
+    });
+  });
+
+  describe("updatePayee", () => {
+    it("updates payee name", async () => {
+      const updatedPayee = { ...mockPayee, name: "New Payee Name" };
+
+      mockUpdatePayee.mockResolvedValueOnce({
+        data: { payee: updatedPayee },
+      });
+
+      const result = await client.updatePayee("budget-123", "payee-def", "New Payee Name");
+
+      expect(mockUpdatePayee).toHaveBeenCalledWith("budget-123", "payee-def", {
+        payee: { name: "New Payee Name" },
+      });
+      expect(result.payee.name).toBe("New Payee Name");
     });
   });
 });
