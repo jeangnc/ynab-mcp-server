@@ -5,6 +5,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { CallToolRequestSchema, ListToolsRequestSchema } from "@modelcontextprotocol/sdk/types.js";
 
 import { YNABClient } from "./client.js";
+import { formatError } from "./errors.js";
 import {
   BudgetIdSchema,
   AccountSchema,
@@ -273,7 +274,7 @@ async function main(): Promise<void> {
         content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const message = formatError(error);
       return {
         isError: true,
         content: [{ type: "text" as const, text: `Error: ${message}` }],
